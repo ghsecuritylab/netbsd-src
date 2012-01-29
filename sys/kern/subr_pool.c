@@ -1,4 +1,4 @@
-/*	$NetBSD: subr_pool.c,v 1.190 2011/09/27 01:02:39 jym Exp $	*/
+/*	$NetBSD: subr_pool.c,v 1.193 2012/01/29 20:20:18 he Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1999, 2000, 2002, 2007, 2008, 2010
@@ -32,7 +32,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: subr_pool.c,v 1.190 2011/09/27 01:02:39 jym Exp $");
+__KERNEL_RCSID(0, "$NetBSD: subr_pool.c,v 1.193 2012/01/29 20:20:18 he Exp $");
 
 #include "opt_ddb.h"
 #include "opt_pool.h"
@@ -2836,7 +2836,9 @@ void	*pool_subpage_alloc(struct pool *, int);
 void	pool_subpage_free(struct pool *, void *);
 
 struct pool_allocator pool_allocator_kmem = {
-	pool_subpage_alloc, pool_subpage_free, POOL_SUBPAGE,
+	.pa_alloc = pool_subpage_alloc,
+	.pa_free = pool_subpage_free,
+	.pa_pagesz = POOL_SUBPAGE,
 	.pa_backingmapptr = &kmem_map,
 };
 
