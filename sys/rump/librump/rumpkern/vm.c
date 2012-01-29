@@ -1,4 +1,4 @@
-/*	$NetBSD: vm.c,v 1.120 2011/10/31 13:23:55 yamt Exp $	*/
+/*	$NetBSD: vm.c,v 1.122 2012/01/29 14:57:31 njoly Exp $	*/
 
 /*
  * Copyright (c) 2007-2011 Antti Kantee.  All Rights Reserved.
@@ -41,7 +41,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: vm.c,v 1.120 2011/10/31 13:23:55 yamt Exp $");
+__KERNEL_RCSID(0, "$NetBSD: vm.c,v 1.122 2012/01/29 14:57:31 njoly Exp $");
 
 #include <sys/param.h>
 #include <sys/atomic.h>
@@ -327,6 +327,7 @@ uvm_init(void)
 	cv_init(&oomwait, "oomwait");
 
 	kernel_map->pmap = pmap_kernel();
+	pool_subsystem_init();
 	callback_head_init(&kernel_map_store.vmk_reclaim_callback, IPL_VM);
 	kmem_map->pmap = pmap_kernel();
 	callback_head_init(&kmem_map_store.vmk_reclaim_callback, IPL_VM);
