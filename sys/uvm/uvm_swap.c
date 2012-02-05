@@ -1,4 +1,4 @@
-/*	$NetBSD: uvm_swap.c,v 1.158 2011/12/12 19:03:13 mrg Exp $	*/
+/*	$NetBSD: uvm_swap.c,v 1.161 2012/02/05 16:08:28 rmind Exp $	*/
 
 /*
  * Copyright (c) 1995, 1996, 1997, 2009 Matthew R. Green
@@ -30,7 +30,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: uvm_swap.c,v 1.158 2011/12/12 19:03:13 mrg Exp $");
+__KERNEL_RCSID(0, "$NetBSD: uvm_swap.c,v 1.161 2012/02/05 16:08:28 rmind Exp $");
 
 #include "opt_uvmhist.h"
 #include "opt_compat_netbsd.h"
@@ -399,8 +399,7 @@ swaplist_trim(void)
 {
 	struct swappri *spp, *nextspp;
 
-	for (spp = LIST_FIRST(&swap_priority); spp != NULL; spp = nextspp) {
-		nextspp = LIST_NEXT(spp, spi_swappri);
+	LIST_FOREACH_SAFE(spp, &swap_priority, spi_swappri, nextspp) {
 		if (CIRCLEQ_FIRST(&spp->spi_swapdev) !=
 		    (void *)&spp->spi_swapdev)
 			continue;
@@ -455,17 +454,10 @@ sys_swapctl(struct lwp *l, const struct sys_swapctl_args *uap, register_t *retva
 	struct swapent *sep;
 #define SWAP_PATH_MAX (PATH_MAX + 1)
 	char	*userpath;
-	size_t	len;
+	size_t	len = 0;
 	int	error, misc;
 	int	priority;
 	UVMHIST_FUNC("sys_swapctl"); UVMHIST_CALLED(pdhist);
-
-	misc = SCARG(uap, misc);
-
-	/*
-	 * ensure serialized syscall access by grabbing the swap_syscall_lock
-	 */
-	rw_enter(&swap_syscall_lock, RW_WRITER);
 
 	userpath = malloc(SWAP_PATH_MAX, M_TEMP, M_WAITOK);
 	/*
@@ -475,12 +467,19 @@ sys_swapctl(struct lwp *l, const struct sys_swapctl_args *uap, register_t *retva
 	 * [can also be obtained with uvmexp sysctl]
 	 */
 	if (SCARG(uap, cmd) == SWAP_NSWAP) {
-		UVMHIST_LOG(pdhist, "<- done SWAP_NSWAP=%d", uvmexp.nswapdev,
-		    0, 0, 0);
-		*retval = uvmexp.nswapdev;
-		error = 0;
-		goto out;
+		const int nswapdev = uvmexp.nswapdev;
+		UVMHIST_LOG(pdhist, "<- done SWAP_NSWAP=%d", nswapdev, 0, 0, 0);
+		*retval = nswapdev;
+		return 0;
 	}
+
+	misc = SCARG(uap, misc);
+	userpath = kmem_alloc(SWAP_PATH_MAX, KM_SLEEP);
+
+	/*
+	 * ensure serialized syscall access by grabbing the swap_syscall_lock
+	 */
+	rw_enter(&swap_syscall_lock, RW_WRITER);
 
 	/*
 	 * SWAP_STATS: get stats on current # of configured swap devs
@@ -500,6 +499,12 @@ sys_swapctl(struct lwp *l, const struct sys_swapctl_args *uap, register_t *retva
 	    ) {
 		if ((size_t)misc > (size_t)uvmexp.nswapdev)
 			misc = uvmexp.nswapdev;
+
+		if (misc == 0) {
+			error = EINVAL;
+			goto out;
+		}
+		KASSERT(misc > 0);
 #if defined(COMPAT_13)
 		if (SCARG(uap, cmd) == SWAP_STATS13)
 			len = sizeof(struct swapent13) * misc;
@@ -561,6 +566,7 @@ sys_swapctl(struct lwp *l, const struct sys_swapctl_args *uap, register_t *retva
 		if (SCARG(uap, cmd) == SWAP_ON &&
 		    copystr("miniroot", userpath, SWAP_PATH_MAX, &len))
 			panic("swapctl: miniroot copy failed");
+		KASSERT(len > 0);
 	} else {
 		struct pathbuf *pb;
 
@@ -657,9 +663,10 @@ sys_swapctl(struct lwp *l, const struct sys_swapctl_args *uap, register_t *retva
 		swaplist_insert(sdp, spp, priority);
 		mutex_exit(&uvm_swap_data_lock);
 
+		KASSERT(len > 0);
 		sdp->swd_pathlen = len;
-		sdp->swd_path = malloc(sdp->swd_pathlen, M_VMSWAP, M_WAITOK);
-		if (copystr(userpath, sdp->swd_path, sdp->swd_pathlen, 0) != 0)
+		sdp->swd_path = malloc(len, M_VMSWAP, M_WAITOK);
+		if (copystr(userpath, sdp->swd_path, len, 0) != 0)
 			panic("swapctl: copystr");
 
 		/*
@@ -739,12 +746,13 @@ uvm_swap_stats(int cmd, struct swapent *sep, int sec, register_t *retval)
 	int count = 0;
 
 	LIST_FOREACH(spp, &swap_priority, spi_swappri) {
-		for (sdp = CIRCLEQ_FIRST(&spp->spi_swapdev);
-		     sdp != (void *)&spp->spi_swapdev && sec-- > 0;
-		     sdp = CIRCLEQ_NEXT(sdp, swd_next)) {
+		CIRCLEQ_FOREACH(sdp, &spp->spi_swapdev, swd_next) {
 			int inuse;
 
-		  	/*
+			if (sec-- <= 0)
+				break;
+
+			/*
 			 * backwards compatibility for system call.
 			 * For NetBSD 1.3 and 5.0, we have to use
 			 * the 32 bit dev_t.  For 5.0 and -current
@@ -761,8 +769,9 @@ uvm_swap_stats(int cmd, struct swapent *sep, int sec, register_t *retval)
 				sep->se_nblks = sdp->swd_nblks;
 				sep->se_inuse = inuse;
 				sep->se_priority = sdp->swd_priority;
-				memcpy(&sep->se_path, sdp->swd_path,
-				       sizeof sep->se_path);
+				KASSERT(sdp->swd_pathlen <
+				    sizeof(sep->se_path));
+				strcpy(sep->se_path, sdp->swd_path);
 				sep++;
 #if defined(COMPAT_13)
 			} else if (cmd == SWAP_STATS13) {
@@ -786,8 +795,9 @@ uvm_swap_stats(int cmd, struct swapent *sep, int sec, register_t *retval)
 				sep50->se50_nblks = sdp->swd_nblks;
 				sep50->se50_inuse = inuse;
 				sep50->se50_priority = sdp->swd_priority;
-				memcpy(&sep50->se50_path, sdp->swd_path,
-				       sizeof sep50->se50_path);
+				KASSERT(sdp->swd_pathlen <
+				    sizeof(sep50->se50_path));
+				strcpy(sep50->se50_path, sdp->swd_path);
 				sep = (struct swapent *)(sep50 + 1);
 #endif
 #if defined(COMPAT_13) || defined(COMPAT_50)
@@ -796,9 +806,7 @@ uvm_swap_stats(int cmd, struct swapent *sep, int sec, register_t *retval)
 			count++;
 		}
 	}
-
 	*retval = count;
-	return;
 }
 
 /*
