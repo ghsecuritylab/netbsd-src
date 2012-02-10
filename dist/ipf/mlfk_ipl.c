@@ -174,7 +174,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 
 
 static int
-ipf_modload()
+ipf_modload(void)
 {
 	char *defpass, *c, *str;
 	int i, j, error;
@@ -236,7 +236,7 @@ ipf_modload()
 
 
 static int
-ipf_modunload()
+ipf_modunload(void)
 {
 	int error, i;
 

@@ -82,7 +82,8 @@ struct	modwrapper	ipf_wrapper = {
 };
 
 
-static int ipf_load(void *arg)
+static int
+ipf_load(void *arg)
 {
 	int i;
 
@@ -98,7 +99,8 @@ static int ipf_load(void *arg)
 }
 
 
-static int ipf_unload(void *arg)
+static int
+ipf_unload(void *arg)
 {
 	int i;
 
