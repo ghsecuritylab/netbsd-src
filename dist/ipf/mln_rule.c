@@ -30,22 +30,24 @@
 #include "ip_rules.h"
 
 
-static int ipfruleaction __P((struct lkm_table *, int));
+static int ipfruleaction(struct lkm_table *, int);
 
 #ifdef IPFILTER_LKM
 # if NetBSD >= 199706
-int	ipfrule_lkmentry __P((struct lkm_table *, int, int));
+int	ipfrule_lkmentry(struct lkm_table *, int, int);
 # else
-int	xxxinit __P((struct lkm_table *, int, int));
+int	xxxinit(struct lkm_table *, int, int);
 # endif
 
 
 MOD_MISC("IPFilter Rules");
 
 # if NetBSD >= 199706
-int ipfrule_lkmentry(lkmtp, cmd, ver)
+int
+ipfrule_lkmentry(lkmtp, cmd, ver)
 # else
-int xxxinit(lkmtp, cmd, ver)
+int
+xxxinit(lkmtp, cmd, ver)
 # endif
 struct lkm_table *lkmtp;
 int cmd, ver;
@@ -53,9 +55,8 @@ int cmd, ver;
 	DISPATCH(lkmtp, cmd, ver, ipfruleaction, ipfruleaction, ipfruleaction);
 }
 
-static int ipfruleaction(lkmtp, cmd)
-struct lkm_table *lkmtp;
-int cmd;
+static int
+ipfruleaction(struct lkm_table *lkmtp, int cmd)
 {
 	int err = 0;
 

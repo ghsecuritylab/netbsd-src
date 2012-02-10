@@ -66,7 +66,7 @@ static	struct modlinkage	modlink1 = {
 };
 
 
-int _init()
+
 {
 	int ipfruleinst;
 
@@ -94,7 +94,7 @@ int _init()
 }
 
 
-int _fini(void)
+
 {
 	int ipfruleinst;
 
@@ -115,7 +115,7 @@ int _fini(void)
 }
 
 
-int _info(modinfop)
+
 struct modinfo *modinfop;
 {
 	int ipfruleinst;

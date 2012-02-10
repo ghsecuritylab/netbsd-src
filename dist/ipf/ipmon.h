@@ -90,8 +90,8 @@ typedef	struct	ipmon_action	{
 #define	LOGFAC	LOG_LOCAL0
 #endif
 
-extern	int	load_config __P((char *));
-extern	void	dumphex __P((FILE *, int, char *, int));
-extern	int	check_action __P((char *, char *, int, int));
-extern	char	*getword __P((int));
-extern	int	fac_findname __P((char *));
+extern	int	load_config(char *);
+extern	void	dumphex(FILE *, int, char *, int);
+extern	int	check_action(char *, char *, int, int);
+extern	char	*getword(int);
+extern	int	fac_findname(char *);

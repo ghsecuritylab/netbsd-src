@@ -102,11 +102,7 @@ extern int vd_unuseddev();
 extern struct cdevsw cdevsw[];
 extern int nchrdev;
 
-xxxinit(fc, vdp, vdi, vds)
-u_int	fc;
-struct	vddrv	*vdp;
-caddr_t	vdi;
-struct	vdstat	*vds;
+xxxinit(u_int fc, struct vddrv *vdp, caddr_t vdi, struct vdstat *vds)
 {
 	struct	vdlinkage *v;
 	int	i;
@@ -133,9 +129,8 @@ struct	vdstat	*vds;
 	}
 }
 
-static unload(vdp, vdi)
-	struct vddrv *vdp;
-	struct vdioctl_unload  *vdi;
+static
+unload(struct vddrv *vdp, struct vdioctl_unload *vdi)
 {
 	int	i;
 
