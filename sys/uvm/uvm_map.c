@@ -1,4 +1,4 @@
-/*	$NetBSD: uvm_map.c,v 1.310 2012/01/05 15:19:53 reinoud Exp $	*/
+/*	$NetBSD: uvm_map.c,v 1.313 2012/02/12 20:28:14 martin Exp $	*/
 
 /*
  * Copyright (c) 1997 Charles D. Cranor and Washington University.
@@ -66,7 +66,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: uvm_map.c,v 1.310 2012/01/05 15:19:53 reinoud Exp $");
+__KERNEL_RCSID(0, "$NetBSD: uvm_map.c,v 1.313 2012/02/12 20:28:14 martin Exp $");
 
 #include "opt_ddb.h"
 #include "opt_uvmhist.h"
@@ -4231,8 +4231,11 @@ uvmspace_exec(struct lwp *l, vaddr_t start, vaddr_t end)
 	 * no races possible in this case.
 	 */
 	if (ovm == NULL) {
-		p->p_vmspace = uvmspace_alloc(start, end);
+		ovm = uvmspace_alloc(start, end);
+		kpreempt_disable();
+		p->p_vmspace = ovm;
 		pmap_activate(l);
+		kpreempt_enable();
 		return;
 	}
 
