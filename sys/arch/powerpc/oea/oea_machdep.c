@@ -1,4 +1,4 @@
-/*	$NetBSD: oea_machdep.c,v 1.61 2012/02/01 05:25:57 matt Exp $	*/
+/*	$NetBSD: oea_machdep.c,v 1.63 2012/02/15 01:56:57 macallan Exp $	*/
 
 /*
  * Copyright (C) 2002 Matt Thomas
@@ -33,7 +33,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: oea_machdep.c,v 1.61 2012/02/01 05:25:57 matt Exp $");
+__KERNEL_RCSID(0, "$NetBSD: oea_machdep.c,v 1.63 2012/02/15 01:56:57 macallan Exp $");
 
 #include "opt_ppcarch.h"
 #include "opt_compat_netbsd.h"
@@ -601,6 +601,10 @@ oea_batinit(paddr_t pa, ...)
 	va_list ap;
 
 	cpuvers = mfpvr() >> 16;
+	/*
+	 * we need to call this before zapping BATs so OF calls work
+	 */
+	mem_regions(&allmem, &availmem);
 
 	/*
 	 * Initialize BAT registers to unmapped to not generate
@@ -699,7 +703,7 @@ oea_batinit(paddr_t pa, ...)
 		       "r"(battable[0x01800000 >> 23].batu));
 	}
 #endif /* PPC_OEA601 */
-
+	
 	/*
 	 * Now setup other fixed bat registers
 	 *
@@ -734,9 +738,7 @@ oea_batinit(paddr_t pa, ...)
 
 	/*
 	 * Set up battable to map all RAM regions.
-	 * This is here because mem_regions() call needs bat0 set up.
 	 */
-	mem_regions(&allmem, &availmem);
 #ifdef PPC_OEA601
 	if (cpuvers == MPC601) {
 		for (mp = allmem; mp->size; mp++) {
